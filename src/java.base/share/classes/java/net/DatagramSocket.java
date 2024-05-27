@@ -33,6 +33,8 @@ import java.util.Objects;
 import java.util.Set;
 import sun.nio.ch.DefaultSelectorProvider;
 
+import sun.security.action.GetPropertyAction;
+
 /**
  * This class represents a socket for sending and receiving datagram packets.
  *
@@ -1443,6 +1445,19 @@ public class DatagramSocket implements java.io.Closeable {
         }
         @SuppressWarnings("unchecked")
         T result = (T) delegate;
+
+        if (delegate != null) {
+            String tos = GetPropertyAction.privilegedGetProperty("kona.socket.tos.value");
+            if (tos != null) {
+                try {
+                    delegate.setOption(StandardSocketOptions.IP_TOS, Integer.valueOf(tos).intValue());
+                } catch (IOException ioe) {
+                    // do nothing
+                } catch (NumberFormatException nfe) {
+                    throw new IllegalArgumentException("Invalid IP_TOS value: " + tos);
+                }
+            }
+        }
         return result;
     }
 

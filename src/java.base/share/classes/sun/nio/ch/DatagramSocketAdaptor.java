@@ -55,6 +55,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
+import sun.security.action.GetPropertyAction;
+
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
@@ -77,6 +79,16 @@ public class DatagramSocketAdaptor
     private DatagramSocketAdaptor(DatagramChannelImpl dc) throws IOException {
         super(/*SocketAddress*/ DatagramSockets.NO_DELEGATE);
         this.dc = dc;
+        String tos = GetPropertyAction.privilegedGetProperty("kona.socket.tos.value");
+        if (tos != null) {
+            try {
+                dc.setOption(StandardSocketOptions.IP_TOS, Integer.valueOf(tos).intValue());
+            } catch (IOException ioe) {
+                // do nothing
+            } catch (NumberFormatException nfe) {
+                throw new IllegalArgumentException("Invalid IP_TOS value: " + tos);
+            }
+        }
     }
 
     static DatagramSocket create(DatagramChannelImpl dc) {

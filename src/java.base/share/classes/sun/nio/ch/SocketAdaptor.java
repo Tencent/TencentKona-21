@@ -41,6 +41,8 @@ import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.Set;
 
+import sun.security.action.GetPropertyAction;
+
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 // Make a socket channel look like a socket.
@@ -61,6 +63,16 @@ class SocketAdaptor
     private SocketAdaptor(SocketChannelImpl sc) throws SocketException {
         super(DummySocketImpl.create());
         this.sc = sc;
+        String tos = GetPropertyAction.privilegedGetProperty("kona.socket.tos.value");
+        if (tos != null) {
+            try {
+                sc.setOption(StandardSocketOptions.IP_TOS, Integer.valueOf(tos).intValue());
+            } catch (IOException ioe) {
+                // do nothing
+            } catch (NumberFormatException nfe) {
+                throw new IllegalArgumentException("Invalid IP_TOS value: " + tos);
+            }
+        }
     }
 
     @SuppressWarnings("removal")

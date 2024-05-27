@@ -26,6 +26,7 @@
 package java.net;
 
 import sun.security.util.SecurityConstants;
+import sun.security.action.GetPropertyAction;
 
 import java.io.InputStream;
 import java.io.InterruptedIOException;
@@ -569,13 +570,25 @@ public class Socket implements java.io.Closeable {
      */
     private static SocketImpl createImpl() {
         SocketImplFactory factory = Socket.factory;
+        SocketImpl impl;
         if (factory != null) {
-            return factory.createSocketImpl();
+            impl = factory.createSocketImpl();
         } else {
             // create a SOCKS SocketImpl that delegates to a platform SocketImpl
             SocketImpl delegate = SocketImpl.createPlatformSocketImpl(false);
-            return new SocksSocketImpl(delegate);
+            impl = new SocksSocketImpl(delegate);
         }
+        String tos = GetPropertyAction.privilegedGetProperty("kona.socket.tos.value");
+        if (tos != null) {
+            try {
+                impl.setOption(StandardSocketOptions.IP_TOS, Integer.valueOf(tos).intValue());
+            } catch (IOException ioe) {
+                // do nothing
+            } catch (NumberFormatException nfe) {
+                throw new IllegalArgumentException("Invalid IP_TOS value: " + tos);
+            }
+        }
+        return impl;
     }
 
     /**
@@ -597,6 +610,16 @@ public class Socket implements java.io.Closeable {
                     }
                     try {
                         impl.create(true);
+                        String tos = GetPropertyAction.privilegedGetProperty("kona.socket.tos.value");
+                        if (tos != null) {
+                            try {
+                                impl.setOption(StandardSocketOptions.IP_TOS, Integer.valueOf(tos).intValue());
+                            } catch (IOException ioe) {
+                                // do nothing
+                            } catch (NumberFormatException nfe) {
+                                throw new IllegalArgumentException("Invalid IP_TOS value: " + tos);
+                            }
+                        }
                     } catch (SocketException e) {
                         throw e;
                     } catch (IOException e) {
