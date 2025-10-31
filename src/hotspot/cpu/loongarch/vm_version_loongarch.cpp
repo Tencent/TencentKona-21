@@ -453,7 +453,7 @@ void VM_Version::get_processor_features() {
       FLAG_SET_DEFAULT(UseActiveCoresMP, false);
     }
   } else { // !UseActiveCoresMP
-    if (FLAG_IS_DEFAULT(UseActiveCoresMP) && !os::is_MP()) {
+    if (FLAG_IS_DEFAULT(UseActiveCoresMP) && os::Linux::sched_active_processor_count() == 1) {
       FLAG_SET_DEFAULT(UseActiveCoresMP, true);
     }
   }
