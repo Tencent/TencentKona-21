@@ -26,6 +26,7 @@
 #include "precompiled.hpp"
 #include "asm/macroAssembler.hpp"
 #include "classfile/javaClasses.hpp"
+#include "compiler/disassembler.hpp"
 #include "gc/shared/barrierSetAssembler.hpp"
 #include "interpreter/bytecodeHistogram.hpp"
 #include "interpreter/interp_masm.hpp"
@@ -51,7 +52,7 @@
 #include "runtime/vframeArray.hpp"
 #include "utilities/debug.hpp"
 
-#define __ _masm->
+#define __ Disassembler::hook<InterpreterMacroAssembler>(__FILE__, __LINE__, _masm)->
 
 int TemplateInterpreter::InterpreterCodeSize = 500 * K;
 
@@ -2010,13 +2011,21 @@ void TemplateInterpreterGenerator::set_vtos_entry_points(Template* t,
                                                          address& vep) {
   assert(t->is_valid() && t->tos_in() == vtos, "illegal template");
   Label L;
-  fep = __ pc(); __ push(ftos); __ b(L);
-  dep = __ pc(); __ push(dtos); __ b(L);
-  lep = __ pc(); __ push(ltos); __ b(L);
-  aep  =__ pc(); __ push(atos); __ b(L);
-  bep = cep = sep =
-  iep = __ pc(); __ push(itos);
-  vep = __ pc();
+  aep = __ pc();     // atos entry point
+      __ push(atos);
+      __ b(L);
+  fep = __ pc();     // ftos entry point
+      __ push(ftos);
+      __ b(L);
+  dep = __ pc();     // dtos entry point
+      __ push(dtos);
+      __ b(L);
+  lep = __ pc();     // ltos entry point
+      __ push(ltos);
+      __ b(L);
+  bep = cep = sep = iep = __ pc();     // [bcsi]tos entry point
+      __ push(itos);
+  vep = __ pc();     // vtos entry point
   __ bind(L);
   generate_and_dispatch(t);
 }

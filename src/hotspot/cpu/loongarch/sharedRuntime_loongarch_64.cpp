@@ -2317,11 +2317,7 @@ void SharedRuntime::generate_deopt_blob() {
   // we are very short of registers
 
   Address unpack_kind(unroll, Deoptimization::UnrollBlock::unpack_kind_offset());
-  __ st_w(reason, unpack_kind);
-  // save the unpack_kind value
-  // Retrieve the possible live values (return values)
-  // All callee save registers representing jvm state
-  // are now in the vframeArray.
+  __ ld_w(reason, unpack_kind);
 
   Label noException;
   __ li(AT, Deoptimization::Unpack_exception);
