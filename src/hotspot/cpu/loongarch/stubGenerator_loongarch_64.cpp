@@ -2920,6 +2920,32 @@ class StubGenerator: public StubCodeGenerator {
 #endif
   }
 
+  // A0 = input (float16)
+  // F0 = result (float)
+  // F1 = temporary float register
+  address generate_float16ToFloat() {
+    __ align(CodeEntryAlignment);
+    StubCodeMark mark(this, "StubRoutines", "float16ToFloat");
+    address entry = __ pc();
+    BLOCK_COMMENT("Entry:");
+    __ flt16_to_flt(F0, A0, F1);
+    __ jr(RA);
+    return entry;
+  }
+
+  // F0 = input (float)
+  // A0 = result (float16)
+  // F1 = temporary float register
+  address generate_floatToFloat16() {
+    __ align(CodeEntryAlignment);
+    StubCodeMark mark(this, "StubRoutines", "floatToFloat16");
+    address entry = __ pc();
+    BLOCK_COMMENT("Entry:");
+    __ flt_to_flt16(A0, F0, F1);
+    __ jr(RA);
+    return entry;
+  }
+
   address generate_method_entry_barrier() {
     __ align(CodeEntryAlignment);
     StubCodeMark mark(this, "StubRoutines", "nmethod_entry_barrier");
@@ -5573,6 +5599,12 @@ class StubGenerator: public StubCodeGenerator {
 
     if (UseCRC32CIntrinsics) {
       StubRoutines::_updateBytesCRC32C = generate_updateBytesCRC32C();
+    }
+
+    if (vmIntrinsics::is_intrinsic_available(vmIntrinsics::_float16ToFloat) &&
+        vmIntrinsics::is_intrinsic_available(vmIntrinsics::_floatToFloat16)) {
+      StubRoutines::_hf2f = generate_float16ToFloat();
+      StubRoutines::_f2hf = generate_floatToFloat16();
     }
  }
 

@@ -3538,7 +3538,9 @@ void MacroAssembler::count_positives(Register src, Register len, Register result
   bind(Done);
 }
 
-// Compress char[] to byte[]. len must be positive int.
+// Intrinsic for java.lang.StringUTF16.compress(char[] src, int srcOff, byte[] dst, int dstOff, int len)
+// Return the array length if every element in array can be encoded,
+// otherwise, the index of first non-latin1 (> 0xff) character.
 // jtreg: TestStringIntrinsicRangeChecks.java
 void MacroAssembler::char_array_compress(Register src, Register dst,
                                          Register len, Register result,
@@ -3546,9 +3548,6 @@ void MacroAssembler::char_array_compress(Register src, Register dst,
                                          FloatRegister vtemp1, FloatRegister vtemp2,
                                          FloatRegister vtemp3, FloatRegister vtemp4) {
   encode_iso_array(src, dst, len, result, tmp1, tmp2, tmp3, false, vtemp1, vtemp2, vtemp3, vtemp4);
-  // Adjust result: result == len ? len : 0
-  sub_w(tmp1, result, len);
-  masknez(result, result, tmp1);
 }
 
 // Inflate byte[] to char[]. len must be positive int.
