@@ -77,11 +77,14 @@ public class TestG1CompressedOops {
 
     checkG1CompressedOops(new String[] { "-Xmx512m"   /* default is 1m */        }, true, 0);
     checkG1CompressedOops(new String[] { "-Xmx512m",  "-XX:G1HeapRegionSize=2m"  }, true, 0);
+    checkG1CompressedOops(new String[] { "-Xmx64m"   /* default is 1m */        }, true, 0);
+    checkG1CompressedOops(new String[] { "-Xmx64m",  "-XX:G1HeapRegionSize=2m"  }, true, 0);
     checkG1CompressedOops(new String[] { "-Xmx32768m" /* 32g will turn off the usecompressedoops */  }, false, 0);
     checkG1CompressedOops(new String[] { "-Xmx32760m" }, false, 0);
     checkG1CompressedOops(new String[] { "-Xmx32736m", /* 32g - 32m will turn on the usecomppressedoops */ }, true, 0);
 
     // if set G1HeapRegionSize explicitly will turn off the UseCompressedOops
+    // if set G1HeapRegionSize explicitly with -Xmx32736m will turn off the UseCompressedOops
     checkG1CompressedOops(new String[] { "-Xmx32736m", "-XX:G1HeapRegionSize=1m" }, false, 0);
     checkG1CompressedOops(new String[] { "-Xmx32256m", "-XX:G1HeapRegionSize=512m" }, true, 0);
   }
