@@ -22,6 +22,12 @@
  *
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2023. These
+ * modifications are Copyright (c) 2023, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 #include "precompiled.hpp"
 #include "logging/log.hpp"
 #include "os_linux.hpp"
@@ -45,6 +51,8 @@
   #define SYS_membarrier 389
   #elif defined(ALPHA)
   #define SYS_membarrier 517
+  #elif defined(LOONGARCH)
+  #define SYS_membarrier 283
   #else
   #error define SYS_membarrier for the arch
   #endif

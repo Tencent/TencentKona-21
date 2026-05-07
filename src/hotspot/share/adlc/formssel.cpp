@@ -22,6 +22,12 @@
  *
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2023, These
+ * modifications are Copyright (c) 2023, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 // FORMS.CPP - Definitions for ADL Parser Forms Classes
 #include "adlc.hpp"
 
@@ -4144,6 +4150,9 @@ bool MatchRule::is_ideal_membar() const {
     !strcmp(_opType,"MemBarVolatile") ||
     !strcmp(_opType,"MemBarCPUOrder") ||
     !strcmp(_opType,"MemBarStoreStore") ||
+#ifdef LOONGARCH64
+    !strcmp(_opType,"SameAddrLoadFence" ) ||
+#endif
     !strcmp(_opType,"OnSpinWait");
 }
 

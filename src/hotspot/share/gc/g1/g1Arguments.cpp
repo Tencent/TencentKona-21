@@ -23,6 +23,12 @@
  *
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2023. These
+ * modifications are Copyright (c) 2023, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 #include "precompiled.hpp"
 #include "gc/g1/g1Arguments.hpp"
 #include "gc/g1/g1CardSet.hpp"
@@ -167,6 +173,20 @@ void G1Arguments::initialize_card_set_configuration() {
 void G1Arguments::initialize() {
   GCArguments::initialize();
   assert(UseG1GC, "Error");
+
+#if defined(LOONGARCH64) && !defined(ZERO)
+  if (FLAG_IS_DEFAULT(UseNUMA)) {
+    FLAG_SET_DEFAULT(UseNUMA, true);
+  }
+
+  if (UseNUMA && FLAG_IS_CMDLINE(G1HeapRegionSize)) {
+    uintx min_g1_heap_size_per_node = G1HeapRegionSize * NUMAMinG1RegionNumberPerNode;
+    if (min_g1_heap_size_per_node > NUMAMinHeapSizePerNode) {
+      FLAG_SET_ERGO(NUMAMinHeapSizePerNode, min_g1_heap_size_per_node);
+    }
+  }
+#endif
+
   FLAG_SET_DEFAULT(ParallelGCThreads, WorkerPolicy::parallel_worker_threads());
   if (ParallelGCThreads == 0) {
     assert(!FLAG_IS_DEFAULT(ParallelGCThreads), "The default value for ParallelGCThreads should not be 0.");

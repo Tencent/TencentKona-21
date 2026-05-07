@@ -21,6 +21,12 @@
  * questions.
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2023, These
+ * modifications are Copyright (c) 2023, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 #ifndef SHARE_GC_Z_ZSTOREBARRIERBUFFER_HPP
 #define SHARE_GC_Z_ZSTOREBARRIERBUFFER_HPP
 
@@ -42,7 +48,9 @@ class ZStoreBarrierBuffer : public CHeapObj<mtGC> {
   friend class ZVerify;
 
 private:
-  static const size_t _buffer_length     = 32;
+  // Tune ZStoreBarrierBuffer length to decrease the opportunity goto
+  // copy_store_at slow-path.
+  static const size_t _buffer_length     = 32 LOONGARCH64_ONLY(+32);
   static const size_t _buffer_size_bytes = _buffer_length * sizeof(ZStoreBarrierEntry);
 
   ZStoreBarrierEntry _buffer[_buffer_length];

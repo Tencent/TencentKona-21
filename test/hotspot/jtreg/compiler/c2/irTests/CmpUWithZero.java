@@ -21,6 +21,12 @@
  * questions.
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2023, These
+ * modifications are Copyright (c) 2023, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 package compiler.c2.irTests;
 
 import compiler.lib.ir_framework.*;
@@ -29,7 +35,7 @@ import compiler.lib.ir_framework.*;
  * @test
  * bug 8290529
  * @summary verify that x <u 1 is transformed to x == 0
- * @requires os.arch=="amd64" | os.arch=="x86_64"
+ * @requires os.arch=="amd64" | os.arch=="x86_64" | os.arch=="loongarch64"
  * @library /test/lib /
  * @requires vm.compiler2.enabled
  * @run driver compiler.c2.irTests.CmpUWithZero

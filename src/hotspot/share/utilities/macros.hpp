@@ -22,6 +22,12 @@
  *
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2022. These
+ * modifications are Copyright (c) 2018, 2022, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 #ifndef SHARE_UTILITIES_MACROS_HPP
 #define SHARE_UTILITIES_MACROS_HPP
 
@@ -482,6 +488,18 @@
 #else
 #define S390_ONLY(code)
 #define NOT_S390(code) code
+#endif
+
+#ifdef LOONGARCH64
+#ifndef LOONGARCH
+#define LOONGARCH
+#endif
+#define LOONGARCH64_ONLY(code) code
+#define NOT_LOONGARCH64(code)
+#else
+#undef LOONGARCH
+#define LOONGARCH64_ONLY(code)
+#define NOT_LOONGARCH64(code) code
 #endif
 
 #if defined(PPC32) || defined(PPC64)

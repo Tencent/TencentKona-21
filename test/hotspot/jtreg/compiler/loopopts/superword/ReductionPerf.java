@@ -22,11 +22,17 @@
  */
 
 /*
+ * This file has been modified by Loongson Technology in 2023, These
+ * modifications are Copyright (c) 2023, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
+/*
  * @test
  * @bug 8074981 8302652
  * @summary Test SuperWord Reduction Perf.
  * @requires vm.compiler2.enabled
- * @requires vm.simpleArch == "x86" | vm.simpleArch == "x64" | vm.simpleArch == "aarch64" | vm.simpleArch == "riscv64"
+ * @requires vm.simpleArch == "x86" | vm.simpleArch == "x64" | vm.simpleArch == "aarch64" | vm.simpleArch == "riscv64" | vm.simpleArch == "loongarch64"
  * @library /test/lib /
  * @run main/othervm -Xbatch -XX:LoopUnrollLimit=250
  *                   -XX:CompileCommand=exclude,compiler.loopopts.superword.ReductionPerf::main

@@ -21,6 +21,12 @@
  * questions.
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2023, These
+ * modifications are Copyright (c) 2023, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 package compiler.vectorapi;
 
 import compiler.lib.ir_framework.*;
@@ -42,7 +48,7 @@ import jdk.test.lib.Utils;
  * @library /test/lib /
  * @summary [vectorapi] REVERSE_BYTES for byte type should not emit any instructions
  * @requires vm.compiler2.enabled
- * @requires (os.simpleArch == "x64" & vm.cpu.features ~= ".*avx2.*") | os.arch == "aarch64"
+ * @requires (os.simpleArch == "x64" & vm.cpu.features ~= ".*avx2.*") | os.arch == "aarch64" | os.arch == "loongarch64"
  * @modules jdk.incubator.vector
  *
  * @run driver compiler.vectorapi.VectorReverseBytesTest

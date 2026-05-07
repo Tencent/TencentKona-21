@@ -21,6 +21,12 @@
  * questions.
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2023, These
+ * modifications are Copyright (c) 2022, 2023, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 package platform;
 
 import jdk.internal.foreign.abi.SharedUtils;
@@ -256,6 +262,58 @@ public final class PlatformLayouts {
 
         // Suppresses default constructor, ensuring non-instantiability.
         private RISCV64() {}
+
+        /**
+         * The {@code bool} native type.
+         */
+        public static final ValueLayout.OfBoolean C_BOOL = ValueLayout.JAVA_BOOLEAN;
+
+        /**
+         * The {@code char} native type.
+         */
+        public static final ValueLayout.OfByte C_CHAR = ValueLayout.JAVA_BYTE;
+
+        /**
+         * The {@code short} native type.
+         */
+        public static final ValueLayout.OfShort C_SHORT = ValueLayout.JAVA_SHORT;
+
+        /**
+         * The {@code int} native type.
+         */
+        public static final ValueLayout.OfInt C_INT = ValueLayout.JAVA_INT;
+
+        /**
+         * The {@code long} native type.
+         */
+        public static final ValueLayout.OfLong C_LONG = ValueLayout.JAVA_LONG;
+
+        /**
+         * The {@code long long} native type.
+         */
+        public static final ValueLayout.OfLong C_LONG_LONG = ValueLayout.JAVA_LONG;
+
+        /**
+         * The {@code float} native type.
+         */
+        public static final ValueLayout.OfFloat C_FLOAT = ValueLayout.JAVA_FLOAT;
+
+        /**
+         * The {@code double} native type.
+         */
+        public static final ValueLayout.OfDouble C_DOUBLE = ValueLayout.JAVA_DOUBLE;
+
+        /**
+         * The {@code T*} native type.
+         */
+        public static final AddressLayout C_POINTER = SharedUtils.C_POINTER;
+
+    }
+
+    public static final class LoongArch64 {
+
+        // Suppresses default constructor, ensuring non-instantiability.
+        private LoongArch64() {}
 
         /**
          * The {@code bool} native type.

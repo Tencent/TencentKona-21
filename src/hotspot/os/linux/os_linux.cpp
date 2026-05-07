@@ -23,6 +23,12 @@
  *
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2023. These
+ * modifications are Copyright (c) 2021, 2023, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 // no precompiled headers
 #include "classfile/vmSymbols.hpp"
 #include "code/icBuffer.hpp"
@@ -2234,6 +2240,12 @@ bool os::Linux::query_process_memory_info(os::Linux::meminfo_t* info) {
   return false;
 }
 
+int os::Linux::sched_active_processor_count() {
+  if (OSContainer::is_containerized())
+    return OSContainer::active_processor_count();
+  return os::Linux::active_processor_count();
+}
+
 #ifdef __GLIBC__
 // For Glibc, print a one-liner with the malloc tunables.
 // Most important and popular is MALLOC_ARENA_MAX, but we are
@@ -2452,7 +2464,7 @@ void os::print_memory_info(outputStream* st) {
 // before "flags" so if we find a second "model name", then the
 // "flags" field is considered missing.
 static bool print_model_name_and_flags(outputStream* st, char* buf, size_t buflen) {
-#if defined(IA32) || defined(AMD64)
+#if defined(IA32) || defined(AMD64) || defined(LOONGARCH64)
   // Other platforms have less repetitive cpuinfo files
   FILE *fp = os::fopen("/proc/cpuinfo", "r");
   if (fp) {
@@ -2564,7 +2576,7 @@ void os::jfr_report_memory_info() {
 
 #endif // INCLUDE_JFR
 
-#if defined(AMD64) || defined(IA32) || defined(X32)
+#if defined(AMD64) || defined(IA32) || defined(X32) || defined(LOONGARCH64)
 const char* search_string = "model name";
 #elif defined(M68K)
 const char* search_string = "CPU";
@@ -4583,6 +4595,44 @@ void os::Linux::numa_init() {
       // If there's only one node (they start from 0) or if the process
       // is bound explicitly to a single node using membind, disable NUMA
       UseNUMA = false;
+#if defined(LOONGARCH64) && !defined(ZERO)
+    } else if (InitialHeapSize < NUMAMinHeapSizePerNode * os::numa_get_groups_num()) {
+      // The MaxHeapSize is not actually used by the JVM unless your program
+      // creates enough objects to require it. A much smaller amount, called
+      // the InitialHeapSize, is allocated during JVM initialization.
+      //
+      // Setting the minimum and maximum heap size to the same value is typically
+      // not a good idea because garbage collection is delayed until the heap is
+      // full. Therefore, the first time that the GC runs, the process can take
+      // longer. Also, the heap is more likely to be fragmented and require a heap
+      // compaction. Start your application with the minimum heap size that your
+      // application requires. When the GC starts up, it runs frequently and
+      // efficiently because the heap is small.
+      //
+      // If the GC cannot find enough garbage, it runs compaction. If the GC finds
+      // enough garbage, or any of the other conditions for heap expansion are met,
+      // the GC expands the heap.
+      //
+      // Therefore, an application typically runs until the heap is full. Then,
+      // successive garbage collection cycles recover garbage. When the heap is
+      // full of live objects, the GC compacts the heap. If sufficient garbage
+      // is still not recovered, the GC expands the heap.
+      if (FLAG_IS_DEFAULT(UseNUMA)) {
+        FLAG_SET_ERGO(UseNUMA, false);
+      } else if (UseNUMA) {
+        log_info(os)("UseNUMA is disabled since insufficient initial heap size.");
+        UseNUMA = false;
+      }
+    } else if (FLAG_IS_CMDLINE(NewSize) &&
+               (NewSize < ScaleForWordSize(1*M) * os::numa_get_groups_num())) {
+      if (FLAG_IS_DEFAULT(UseNUMA)) {
+        FLAG_SET_ERGO(UseNUMA, false);
+      } else if (UseNUMA) {
+        log_info(os)("Handcrafted MaxNewSize should be large enough "
+                     "to avoid GC trigger before VM initialization completed.");
+        UseNUMA = false;
+      }
+#endif
     } else {
       LogTarget(Info,os) log;
       LogStream ls(log);

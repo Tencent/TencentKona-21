@@ -21,6 +21,12 @@
  * questions.
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2022, These
+ * modifications are Copyright (c) 2022, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 import java.io.OutputStream;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -37,7 +43,7 @@ import jdk.test.lib.SA.SATestUtils;
  * @test
  * @bug 8214226 8243500
  * @requires vm.hasSA
- * @requires os.arch=="amd64" | os.arch=="x86_64"
+ * @requires os.arch=="amd64" | os.arch=="x86_64" | os.arch=="loongarch64"
  * @requires os.family=="windows" | os.family == "linux" | os.family == "mac"
  * @requires vm.flagless
  * @library /test/lib

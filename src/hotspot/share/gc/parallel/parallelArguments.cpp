@@ -23,6 +23,12 @@
  *
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2023. These
+ * modifications are Copyright (c) 2023, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 #include "precompiled.hpp"
 #include "gc/parallel/parallelArguments.hpp"
 #include "gc/parallel/parallelScavengeHeap.hpp"
@@ -44,6 +50,12 @@ size_t ParallelArguments::conservative_max_heap_alignment() {
 void ParallelArguments::initialize() {
   GCArguments::initialize();
   assert(UseParallelGC, "Error");
+
+#if defined(LOONGARCH64) && !defined(ZERO)
+  if (FLAG_IS_DEFAULT(UseNUMA)) {
+    FLAG_SET_DEFAULT(UseNUMA, true);
+  }
+#endif
 
   // If no heap maximum was requested explicitly, use some reasonable fraction
   // of the physical memory, up to a maximum of 1GB.

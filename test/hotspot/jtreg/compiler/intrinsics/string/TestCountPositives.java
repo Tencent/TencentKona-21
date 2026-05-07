@@ -22,6 +22,12 @@
  */
 
 /*
+ * This file has been modified by Loongson Technology in 2022. These
+ * modifications are Copyright (c) 2022 Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
+/*
  * @test
  * @bug 8281146
  * @summary Validates StringCoding.countPositives intrinsic with a small range of tests.
@@ -55,6 +61,7 @@ import java.lang.Helper;
 import java.util.Random;
 import java.util.stream.IntStream;
 
+import jdk.test.lib.Platform;
 import jdk.test.lib.Utils;
 
 public class TestCountPositives {
@@ -127,7 +134,7 @@ public class TestCountPositives {
         int calculated = Helper.StringCodingCountPositives(bytes, off, len);
         int expected = countPositives(bytes, off, len);
         if (calculated != expected) {
-            if (expected != len && ng >= 0 && calculated >= 0 && calculated < expected) {
+            if (!Platform.isLoongArch64() && expected != len && ng >= 0 && calculated >= 0 && calculated < expected) {
                 // allow intrinsics to return early with a lower value,
                 // but only if we're not expecting the full length (no
                 // negative bytes)
