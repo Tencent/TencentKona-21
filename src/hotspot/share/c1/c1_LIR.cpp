@@ -497,9 +497,7 @@ void LIR_OpVisitState::visit(LIR_Op* op) {
       assert(opConvert->_info == nullptr, "must be");
       if (opConvert->_opr->is_valid())       do_input(opConvert->_opr);
       if (opConvert->_result->is_valid())    do_output(opConvert->_result);
-#ifdef LOONGARCH64
       if (opConvert->_tmp->is_valid())       do_temp(opConvert->_tmp);
-#endif
       do_stub(opConvert->_stub);
 
       break;
@@ -1415,14 +1413,6 @@ void LIR_List::unsigned_shift_right(LIR_Opr value, LIR_Opr count, LIR_Opr dst, L
                     tmp));
 }
 
-#ifndef LOONGARCH64
-void LIR_List::fcmp2int(LIR_Opr left, LIR_Opr right, LIR_Opr dst, bool is_unordered_less) {
-  append(new LIR_Op2(is_unordered_less ? lir_ucmp_fd2i : lir_cmp_fd2i,
-                     left,
-                     right,
-                     dst));
-}
-#else
 void LIR_List::fcmp2int(LIR_Opr left, LIR_Opr right, LIR_Opr dst, bool is_unordered_less, LIR_Opr tmp) {
   append(new LIR_Op2(is_unordered_less ? lir_ucmp_fd2i : lir_cmp_fd2i,
                      left,
@@ -1430,7 +1420,6 @@ void LIR_List::fcmp2int(LIR_Opr left, LIR_Opr right, LIR_Opr dst, bool is_unorde
                      dst,
                      tmp));
 }
-#endif
 
 void LIR_List::lock_object(LIR_Opr hdr, LIR_Opr obj, LIR_Opr lock, LIR_Opr scratch, CodeStub* stub, CodeEmitInfo* info) {
   append(new LIR_OpLock(
@@ -1946,11 +1935,9 @@ void LIR_OpConvert::print_instr(outputStream* out) const {
   print_bytecode(out, bytecode());
   in_opr()->print(out);                  out->print(" ");
   result_opr()->print(out);              out->print(" ");
-#ifdef LOONGARCH64
   if(tmp()->is_valid()) {
     tmp()->print(out);                   out->print(" ");
   }
-#endif
 }
 
 void LIR_OpConvert::print_bytecode(outputStream* out, Bytecodes::Code code) {

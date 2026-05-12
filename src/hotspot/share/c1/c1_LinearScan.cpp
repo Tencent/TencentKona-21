@@ -5957,7 +5957,7 @@ void EdgeMoveOptimizer::optimize(BlockList* code) {
     if (block->number_of_preds() > 1 && !block->is_set(BlockBegin::exception_entry_flag)) {
       optimizer.optimize_moves_at_block_end(block);
     }
-#ifndef LOONGARCH64
+#if !defined(RISCV) && !defined(LOONGARCH)
     // Disable this optimization on riscv and loongarch temporarily, because it does not
     // work when the comparison operands are bound to branches or cmoves.
     if (block->number_of_sux() == 2) {

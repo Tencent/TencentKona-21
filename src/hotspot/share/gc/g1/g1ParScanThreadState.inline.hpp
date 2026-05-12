@@ -67,7 +67,7 @@ void G1ParScanThreadState::trim_queue() {
   assert(_task_queue->overflow_empty(), "invariant");
   // Load of _age._fields._top in trim_queue_to_threshold must not pass
   // the load of _age._fields._top in assert _task_queue->taskqueue_empty().
-  DEBUG_ONLY(OrderAccess::loadload();)
+  LOONGARCH64_ONLY(DEBUG_ONLY(OrderAccess::loadload();))
   assert(_task_queue->taskqueue_empty(), "invariant");
 }
 

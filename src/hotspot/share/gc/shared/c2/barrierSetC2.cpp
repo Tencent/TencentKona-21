@@ -306,8 +306,8 @@ public:
         assert(_leading_membar == nullptr || support_IRIW_for_not_multiple_copy_atomic_cpu, "no leading membar expected");
         Node* mb = kit->insert_mem_bar(Op_MemBarAcquire, n);
         mb->as_MemBar()->set_trailing_load();
-      } else if (is_relaxed && is_unsafe) {
 #ifdef LOONGARCH64
+      } else if (is_relaxed && is_unsafe) {
         assert(kit != nullptr, "unsupported at optimization time");
         Node* n = _access.raw_access();
         Node* mb = kit->insert_mem_bar(Op_SameAddrLoadFence, n);

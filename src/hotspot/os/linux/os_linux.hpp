@@ -199,7 +199,9 @@ class os::Linux {
 
   // none present
 
+#ifdef LOONGARCH64
   static int sched_active_processor_count();
+#endif
 
  private:
   static void numa_init();
