@@ -21,6 +21,12 @@
  * questions.
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2022. These
+ * modifications are Copyright (c) 2022 Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 package compiler.arraycopy.stress;
 
 import java.util.ArrayList;
@@ -149,6 +155,14 @@ public class TestStressArrayCopy {
             // Alternate configs with other flags
             configs = alternate(configs, "UseCompressedOops");
             configs = alternate(configs, "UseSIMDForMemoryOps");
+        } else if (Platform.isLoongArch64()) {
+            // LoongArch64
+            configs.add(new ArrayList());
+
+            // Alternate configs with other flags
+            configs = alternate(configs, "UseLASX");
+            configs = alternate(configs, "UseLSX");
+            configs = alternate(configs, "UseCompressedOops");
         } else {
             // Generic config.
             configs.add(new ArrayList());

@@ -22,6 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+/*
+ * This file has been modified by Loongson Technology in 2025, These
+ * modifications are Copyright (c) 2025, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 package sun.tools.attach;
 
 import com.sun.tools.attach.AgentLoadException;
@@ -323,7 +330,9 @@ public class VirtualMachineImpl extends HotSpotVirtualMachine {
     private static final String FIELD = "field";
     private static final String MASK  = "mask";
 
-    private static final Pattern SIGNAL_MASK_PATTERN = Pattern.compile("(?<" + FIELD + ">Sig\\p{Alpha}{3}):\\s+(?<" + MASK + ">\\p{XDigit}{16}).*");
+
+    // The length of Sig(Cgt) in some architecture is 32.
+    private static final Pattern SIGNAL_MASK_PATTERN = Pattern.compile("(?<" + FIELD + ">Sig\\p{Alpha}{3}):\\s+(?<" + MASK + ">\\p{XDigit}{16,32}).*");
 
     private static final long SIGQUIT = 0b100; // mask bit for SIGQUIT
 

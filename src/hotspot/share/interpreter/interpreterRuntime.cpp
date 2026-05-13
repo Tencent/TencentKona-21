@@ -22,6 +22,12 @@
  *
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2022, These
+ * modifications are Copyright (c) 2018, 2022, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 #include "precompiled.hpp"
 #include "classfile/javaClasses.inline.hpp"
 #include "classfile/symbolTable.hpp"
@@ -1471,7 +1477,7 @@ JRT_ENTRY(void, InterpreterRuntime::prepare_native_call(JavaThread* current, Met
   // preparing the same method will be sure to see non-null entry & mirror.
 JRT_END
 
-#if defined(IA32) || defined(AMD64) || defined(ARM)
+#if defined(IA32) || defined(AMD64) || defined(ARM) || defined(LOONGARCH64)
 JRT_LEAF(void, InterpreterRuntime::popframe_move_outgoing_args(JavaThread* current, void* src_address, void* dest_address))
   assert(current == JavaThread::current(), "pre-condition");
   if (src_address == dest_address) {

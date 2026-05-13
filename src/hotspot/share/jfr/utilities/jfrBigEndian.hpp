@@ -22,6 +22,12 @@
  *
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2022, These
+ * modifications are Copyright (c) 2019, 2022, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 #ifndef SHARE_JFR_UTILITIES_JFRBIGENDIAN_HPP
 #define SHARE_JFR_UTILITIES_JFRBIGENDIAN_HPP
 
@@ -103,7 +109,7 @@ inline T JfrBigEndian::read_unaligned(const address location) {
 inline bool JfrBigEndian::platform_supports_unaligned_reads(void) {
 #if defined(IA32) || defined(AMD64) || defined(PPC) || defined(S390)
   return true;
-#elif defined(ARM) || defined(AARCH64) || defined(RISCV)
+#elif defined(ARM) || defined(AARCH64) || defined(RISCV) || defined(LOONGARCH)
   return false;
 #else
   #warning "Unconfigured platform"

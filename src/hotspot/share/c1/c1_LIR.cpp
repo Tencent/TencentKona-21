@@ -22,6 +22,12 @@
  *
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2022, These
+ * modifications are Copyright (c) 2022, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 #include "precompiled.hpp"
 #include "c1/c1_CodeStubs.hpp"
 #include "c1/c1_InstructionPrinter.hpp"
@@ -491,6 +497,7 @@ void LIR_OpVisitState::visit(LIR_Op* op) {
       assert(opConvert->_info == nullptr, "must be");
       if (opConvert->_opr->is_valid())       do_input(opConvert->_opr);
       if (opConvert->_result->is_valid())    do_output(opConvert->_result);
+      if (opConvert->_tmp->is_valid())       do_temp(opConvert->_tmp);
       do_stub(opConvert->_stub);
 
       break;
@@ -1101,7 +1108,7 @@ LIR_List::LIR_List(Compilation* compilation, BlockBegin* block)
   , _file(nullptr)
   , _line(0)
 #endif
-#ifdef RISCV
+#if defined(RISCV) || defined(LOONGARCH)
   , _cmp_opr1(LIR_OprFact::illegalOpr)
   , _cmp_opr2(LIR_OprFact::illegalOpr)
 #endif
@@ -1122,7 +1129,7 @@ void LIR_List::set_file_and_line(const char * file, int line) {
 }
 #endif
 
-#ifdef RISCV
+#if defined(RISCV) || defined(LOONGARCH)
 void LIR_List::set_cmp_oprs(LIR_Op* op) {
   switch (op->code()) {
     case lir_cmp:
@@ -1151,7 +1158,7 @@ void LIR_List::set_cmp_oprs(LIR_Op* op) {
       break;
 #if INCLUDE_ZGC
     case lir_xloadbarrier_test:
-      _cmp_opr1 = FrameMap::as_opr(t1);
+      _cmp_opr1 = FrameMap::as_opr(RISCV_ONLY(t1) LOONGARCH64_ONLY(SCR1));
       _cmp_opr2 = LIR_OprFact::intConst(0);
       break;
 #endif
@@ -1406,11 +1413,12 @@ void LIR_List::unsigned_shift_right(LIR_Opr value, LIR_Opr count, LIR_Opr dst, L
                     tmp));
 }
 
-void LIR_List::fcmp2int(LIR_Opr left, LIR_Opr right, LIR_Opr dst, bool is_unordered_less) {
+void LIR_List::fcmp2int(LIR_Opr left, LIR_Opr right, LIR_Opr dst, bool is_unordered_less, LIR_Opr tmp) {
   append(new LIR_Op2(is_unordered_less ? lir_ucmp_fd2i : lir_cmp_fd2i,
                      left,
                      right,
-                     dst));
+                     dst,
+                     tmp));
 }
 
 void LIR_List::lock_object(LIR_Opr hdr, LIR_Opr obj, LIR_Opr lock, LIR_Opr scratch, CodeStub* stub, CodeEmitInfo* info) {
@@ -1927,6 +1935,9 @@ void LIR_OpConvert::print_instr(outputStream* out) const {
   print_bytecode(out, bytecode());
   in_opr()->print(out);                  out->print(" ");
   result_opr()->print(out);              out->print(" ");
+  if(tmp()->is_valid()) {
+    tmp()->print(out);                   out->print(" ");
+  }
 }
 
 void LIR_OpConvert::print_bytecode(outputStream* out, Bytecodes::Code code) {

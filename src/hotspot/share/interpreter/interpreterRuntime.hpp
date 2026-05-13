@@ -22,6 +22,12 @@
  *
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2022, These
+ * modifications are Copyright (c) 2018, 2022, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 #ifndef SHARE_INTERPRETER_INTERPRETERRUNTIME_HPP
 #define SHARE_INTERPRETER_INTERPRETERRUNTIME_HPP
 
@@ -133,7 +139,7 @@ class InterpreterRuntime: AllStatic {
                                         Method* method,
                                         intptr_t* from, intptr_t* to);
 
-#if defined(IA32) || defined(AMD64) || defined(ARM)
+#if defined(IA32) || defined(AMD64) || defined(ARM) || defined(LOONGARCH64)
   // Popframe support (only needed on x86, AMD64 and ARM)
   static void popframe_move_outgoing_args(JavaThread* current, void* src_address, void* dest_address);
 #endif

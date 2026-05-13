@@ -22,6 +22,12 @@
  * questions.
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2023. These
+ * modifications are Copyright (c) 2023, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 package compiler.intrinsics.chacha;
 
 import java.util.ArrayList;
@@ -95,6 +101,12 @@ public class TestChaCha20 {
             // AArch64 intrinsics require the advanced simd instructions
             if (containsFuzzy(cpuFeatures, "simd")) {
                 System.out.println("Setting up ASIMD worker");
+                configs.add(new ArrayList());
+            }
+        } else if (Platform.isLoongArch64()) {
+            // LoongArch64 intrinsics require the lsx instructions
+            if (containsFuzzy(cpuFeatures, "lsx")) {
+                System.out.println("Setting up LSX worker");
                 configs.add(new ArrayList());
             }
         } else {

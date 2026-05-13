@@ -22,6 +22,13 @@
  *
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2022, These
+ * modifications are Copyright (c) 2015, 2022, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
+
 #include "precompiled.hpp"
 #include "jni.h"
 #include "runtime/interfaceSupport.inline.hpp"
@@ -503,6 +510,14 @@ static int __ieee754_rem_pio2(double x, double *y) {
  *              sin(x) = x + (S1*x + (x *(r-y/2)+y))
  */
 
+#if defined(LOONGARCH)
+#define S1   -1.66666666666666324348e-01
+#define S2    8.33333333332248946124e-03
+#define S3   -1.98412698298579493134e-04
+#define S4    2.75573137070700676789e-06
+#define S5   -2.50507602534068634195e-08
+#define S6    1.58969099521155010221e-10
+#else
 static const double
 S1  = -1.66666666666666324348e-01, /* 0xBFC55555, 0x55555549 */
 S2  =  8.33333333332248946124e-03, /* 0x3F811111, 0x1110F8A6 */
@@ -510,6 +525,7 @@ S3  = -1.98412698298579493134e-04, /* 0xBF2A01A0, 0x19C161D5 */
 S4  =  2.75573137070700676789e-06, /* 0x3EC71DE3, 0x57B1FE7D */
 S5  = -2.50507602534068634195e-08, /* 0xBE5AE5E6, 0x8A2B9CEB */
 S6  =  1.58969099521155010221e-10; /* 0x3DE5D93A, 0x5ACFD57C */
+#endif
 
 static double __kernel_sin(double x, double y, int iy)
 {

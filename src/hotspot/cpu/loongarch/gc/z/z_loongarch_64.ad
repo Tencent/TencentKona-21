@@ -1,0 +1,250 @@
+//
+// Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2021, 2023, Loongson Technology. All rights reserved.
+// DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+//
+// This code is free software; you can redistribute it and/or modify it
+// under the terms of the GNU General Public License version 2 only, as
+// published by the Free Software Foundation.
+//
+// This code is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+// version 2 for more details (a copy is included in the LICENSE file that
+// accompanied this code).
+//
+// You should have received a copy of the GNU General Public License version
+// 2 along with this work; if not, write to the Free Software Foundation,
+// Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+//
+// Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+// or visit www.oracle.com if you need additional information or have any
+// questions.
+//
+
+source_hpp %{
+
+#include "gc/shared/gc_globals.hpp"
+#include "gc/z/c2/zBarrierSetC2.hpp"
+#include "gc/z/zThreadLocalData.hpp"
+
+%}
+
+source %{
+
+#include "gc/z/zBarrierSetAssembler.hpp"
+
+static void z_load_barrier(MacroAssembler& _masm, const MachNode* node, Address ref_addr, Register ref, Register tmp) {
+  if (node->barrier_data() == ZBarrierElided) {
+    __ z_uncolor(ref);
+  } else {
+    const bool on_non_strong =
+      ((node->barrier_data() & ZBarrierWeak) != 0) ||
+      ((node->barrier_data() & ZBarrierPhantom) != 0);
+
+    ZLoadBarrierStubC2* const stub = ZLoadBarrierStubC2::create(node, ref_addr, ref);
+    Label good;
+    __ check_color(ref, tmp, on_non_strong);
+    __ beqz(tmp, good);
+    __ b(*stub->entry());
+
+    __ bind(good);
+    __ z_uncolor(ref);
+    __ bind(*stub->continuation());
+  }
+}
+
+static void z_store_barrier(MacroAssembler& _masm, const MachNode* node, Address ref_addr, Register rnew_zaddress, Register rnew_zpointer, Register tmp, bool is_atomic) {
+  if (node->barrier_data() == ZBarrierElided) {
+    __ z_color(rnew_zpointer, rnew_zaddress, tmp);
+  } else {
+    bool is_native = (node->barrier_data() & ZBarrierNative) != 0;
+    ZStoreBarrierStubC2* const stub = ZStoreBarrierStubC2::create(node, ref_addr, rnew_zaddress, rnew_zpointer, is_native, is_atomic);
+    ZBarrierSetAssembler* bs_asm = ZBarrierSet::assembler();
+    bs_asm->store_barrier_fast(&_masm, ref_addr, rnew_zaddress, rnew_zpointer, tmp, true /* in_nmethod */, is_atomic, *stub->entry(), *stub->continuation());
+  }
+}
+
+static void z_compare_and_swap(MacroAssembler& _masm, const MachNode* node,
+                               Register res, Register mem, Register oldval, Register newval,
+                               Register oldval_tmp, Register newval_tmp, Register tmp, bool acquire) {
+  Address addr(mem);
+  __ z_color(oldval_tmp, oldval, tmp);
+  z_store_barrier(_masm, node, addr, newval, newval_tmp, tmp, true /* is_atomic */);
+  __ cmpxchg(addr, oldval_tmp, newval_tmp, res, false /* retold */, acquire /* acquire */,
+             false /* weak */, false /* exchange */);
+}
+
+static void z_compare_and_exchange(MacroAssembler& _masm, const MachNode* node,
+                                   Register res, Register mem, Register oldval, Register newval,
+                                   Register oldval_tmp, Register newval_tmp, Register tmp, bool acquire) {
+  Address addr(mem);
+  __ z_color(oldval_tmp, oldval, tmp);
+  z_store_barrier(_masm, node, addr, newval, newval_tmp, tmp, true /* is_atomic */);
+  __ cmpxchg(addr, oldval_tmp, newval_tmp, res, false /* retold */, acquire /* acquire */,
+             false /* weak */, true /* exchange */);
+  __ z_uncolor(res);
+}
+
+%}
+
+// Load Pointer
+instruct zLoadP(mRegP dst, memory mem, mRegP tmp)
+%{
+  match(Set dst (LoadP mem));
+  effect(TEMP_DEF dst, TEMP tmp);
+  ins_cost(125);//must be equal loadP in loongarch_64.ad
+
+  predicate(UseZGC && ZGenerational && n->as_Load()->barrier_data() != 0);
+
+  format %{ "zLoadP  $dst, $mem" %}
+
+  ins_encode %{
+    Address ref_addr = Address(as_Register($mem$$base), as_Register($mem$$index), Address::no_scale, $mem$$disp);
+    __ block_comment("zLoadP");
+    __ ld_d($dst$$Register, ref_addr);
+    z_load_barrier(_masm, this, ref_addr, $dst$$Register, $tmp$$Register);
+  %}
+
+  ins_pipe(pipe_slow);
+%}
+
+// Store Pointer
+instruct zStoreP(memory mem, mRegP src, mRegP tmp1, mRegP tmp2)
+%{
+  predicate(UseZGC && ZGenerational && n->as_Store()->barrier_data() != 0);
+  match(Set mem (StoreP mem src));
+  effect(TEMP_DEF tmp1, TEMP tmp2);
+
+  ins_cost(125); // XXX
+  format %{ "zStoreP    $mem, $src\t# ptr" %}
+  ins_encode %{
+    Address ref_addr = Address(as_Register($mem$$base), as_Register($mem$$index), Address::no_scale, $mem$$disp);
+    __ block_comment("zStoreP");
+    z_store_barrier(_masm, this, ref_addr, $src$$Register, $tmp1$$Register, $tmp2$$Register, false /* is_atomic */);
+    __ st_d($tmp1$$Register, ref_addr);
+  %}
+  ins_pipe(pipe_slow);
+%}
+
+// Store Null Pointer
+instruct zStorePNull(memory mem, immP_0 zero, mRegP tmp1, mRegP tmp2)
+%{
+  predicate(UseZGC && ZGenerational && n->as_Store()->barrier_data() != 0);
+  match(Set mem (StoreP mem zero));
+  effect(TEMP_DEF tmp1, TEMP tmp2);
+
+  ins_cost(125); // XXX
+  format %{ "zStoreP    $mem, null\t# ptr" %}
+  ins_encode %{
+    Address ref_addr = Address(as_Register($mem$$base), as_Register($mem$$index), Address::no_scale, $mem$$disp);
+    __ block_comment("zStoreP null");
+    z_store_barrier(_masm, this, ref_addr, noreg, $tmp1$$Register, $tmp2$$Register, false /* is_atomic */);
+    __ st_d($tmp1$$Register, ref_addr);
+  %}
+  ins_pipe(pipe_slow);
+%}
+
+instruct zCompareAndSwapP(mRegI res, mRegP mem, mRegP oldval, mRegP newval, mRegP oldval_tmp, mRegP newval_tmp, mRegP tmp) %{
+  match(Set res (CompareAndSwapP mem (Binary oldval newval)));
+  match(Set res (WeakCompareAndSwapP mem (Binary oldval newval)));
+  effect(TEMP_DEF res, TEMP oldval_tmp, TEMP newval_tmp, TEMP tmp);
+
+  predicate((UseZGC && ZGenerational && n->as_LoadStore()->barrier_data() != 0)
+            && (((CompareAndSwapNode*)n)->order() != MemNode::acquire && ((CompareAndSwapNode*) n)->order() != MemNode::seqcst));
+  ins_cost(3 * MEMORY_REF_COST);//must be equal compareAndSwapP in loongarch_64.ad
+
+  format %{ "zCompareAndSwapP $res, $mem, $oldval, $newval; as bool; ptr" %}
+  ins_encode %{
+    __ block_comment("zCompareAndSwapP");
+    z_compare_and_swap(_masm, this,
+                       $res$$Register, $mem$$Register, $oldval$$Register, $newval$$Register,
+                       $oldval_tmp$$Register, $newval_tmp$$Register, $tmp$$Register, false /* acquire */);
+  %}
+
+  ins_pipe(pipe_slow);
+%}
+
+instruct zCompareAndSwapP_acq(mRegI res, mRegP mem, mRegP oldval, mRegP newval, mRegP oldval_tmp, mRegP newval_tmp, mRegP tmp) %{
+  match(Set res (CompareAndSwapP mem (Binary oldval newval)));
+  match(Set res (WeakCompareAndSwapP mem (Binary oldval newval)));
+  effect(TEMP_DEF res, TEMP oldval_tmp, TEMP newval_tmp, TEMP tmp);
+
+  predicate((UseZGC && ZGenerational && n->as_LoadStore()->barrier_data() != 0)
+            && (((CompareAndSwapNode*)n)->order() == MemNode::acquire || ((CompareAndSwapNode*) n)->order() == MemNode::seqcst));
+  ins_cost(4 * MEMORY_REF_COST);//must be larger than zCompareAndSwapP
+
+  format %{ "zCompareAndSwapP acq $res, $mem, $oldval, $newval; as bool; ptr" %}
+  ins_encode %{
+    __ block_comment("zCompareAndSwapP_acq");
+    z_compare_and_swap(_masm, this,
+                       $res$$Register, $mem$$Register, $oldval$$Register, $newval$$Register,
+                       $oldval_tmp$$Register, $newval_tmp$$Register, $tmp$$Register, true /* acquire */);
+  %}
+
+  ins_pipe(pipe_slow);
+%}
+
+instruct zCompareAndExchangeP(mRegP res, mRegP mem, mRegP oldval, mRegP newval, mRegP oldval_tmp, mRegP newval_tmp, mRegP tmp) %{
+  match(Set res (CompareAndExchangeP mem (Binary oldval newval)));
+  effect(TEMP_DEF res, TEMP oldval_tmp, TEMP newval_tmp, TEMP tmp);
+  ins_cost(2* MEMORY_REF_COST);//must be equal compareAndExchangeP in loongarch_64.ad
+
+  predicate((UseZGC && ZGenerational && n->as_LoadStore()->barrier_data() != 0)
+            && (
+              ((CompareAndSwapNode*)n)->order() != MemNode::acquire
+              && ((CompareAndSwapNode*)n)->order() != MemNode::seqcst
+            ));
+
+  format %{ "zCompareAndExchangeP $res, $mem, $oldval, $newval; as ptr; ptr" %}
+  ins_encode %{
+    __ block_comment("zCompareAndExchangeP");
+    z_compare_and_exchange(_masm, this,
+                           $res$$Register, $mem$$Register, $oldval$$Register, $newval$$Register,
+                           $oldval_tmp$$Register, $newval_tmp$$Register, $tmp$$Register, false /* acquire */);
+  %}
+
+  ins_pipe(pipe_slow);
+%}
+
+instruct zCompareAndExchangeP_acq(mRegP res, mRegP mem, mRegP oldval, mRegP newval, mRegP oldval_tmp, mRegP newval_tmp, mRegP tmp) %{
+  match(Set res (CompareAndExchangeP mem (Binary oldval newval)));
+  effect(TEMP_DEF res, TEMP oldval_tmp, TEMP newval_tmp, TEMP tmp);
+
+  predicate((UseZGC && ZGenerational && n->as_LoadStore()->barrier_data() != 0)
+            && (
+              ((CompareAndSwapNode*)n)->order() == MemNode::acquire
+              || ((CompareAndSwapNode*)n)->order() == MemNode::seqcst
+            ));
+
+  format %{ "zCompareAndExchangeP acq $res, $mem, $oldval, $newval; as ptr; ptr" %}
+  ins_encode %{
+    __ block_comment("zCompareAndExchangeP_acq");
+    z_compare_and_exchange(_masm, this,
+                           $res$$Register, $mem$$Register, $oldval$$Register, $newval$$Register,
+                           $oldval_tmp$$Register, $newval_tmp$$Register, $tmp$$Register, true /* acquire */);
+  %}
+
+  ins_pipe(pipe_slow);
+%}
+
+instruct zGetAndSetP(mRegP mem, mRegP newv, mRegP prev, mRegP tmp1, mRegP tmp2) %{
+  match(Set prev (GetAndSetP mem newv));
+  effect(TEMP_DEF prev, TEMP tmp1, TEMP tmp2);
+
+  predicate(UseZGC && ZGenerational && n->as_LoadStore()->barrier_data() != 0);
+
+  format %{ "zGetAndSetP $prev, $mem, $newv" %}
+  ins_encode %{
+    Register prev = $prev$$Register;
+    Register newv = $newv$$Register;
+    Register addr = $mem$$Register;
+    __ block_comment("zGetAndSetP");
+    z_store_barrier(_masm, this, Address(addr, 0), newv, prev, $tmp1$$Register, true /* is_atomic */);
+    __ amswap_db_d($tmp2$$Register, prev, addr);
+    __ move(prev, $tmp2$$Register);
+    __ z_uncolor(prev);
+  %}
+
+  ins_pipe(pipe_slow);
+%}

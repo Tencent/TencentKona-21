@@ -22,9 +22,15 @@
  * questions.
  */
 
+ /*
+ * This file has been modified by Loongson Technology in 2023. These
+ * modifications are Copyright (c) 2023 Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 /*
  * @test
- * @requires os.arch=="aarch64" | os.arch=="riscv64"
+ * @requires os.arch=="aarch64" | os.arch=="riscv64" | os.arch=="loongarch64"
  * @summary String::compareTo implementation uses different algorithms for
  *          different string length. This test creates string with specified
  *          size and longer string, which is same at beginning.

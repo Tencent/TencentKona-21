@@ -22,6 +22,12 @@
  *
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2023, These
+ * modifications are Copyright (c) 2022, 2023, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 #include "precompiled.hpp"
 #include "classfile/vmSymbols.hpp"
 #include "gc/shared/barrierSetNMethod.hpp"
@@ -224,7 +230,7 @@ frame Continuation::continuation_parent_frame(RegisterMap* map) {
 
   map->set_stack_chunk(nullptr);
 
-#if (defined(X86) || defined(AARCH64) || defined(RISCV64) || defined(PPC64)) && !defined(ZERO)
+#if (defined(X86) || defined(AARCH64) || defined(RISCV64) || defined(PPC64) || defined(LOONGARCH64)) && !defined(ZERO)
   frame sender(cont.entrySP(), cont.entryFP(), cont.entryPC());
 #else
   frame sender = frame();

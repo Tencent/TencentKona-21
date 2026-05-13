@@ -21,12 +21,19 @@
  * questions.
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2023. These
+ * modifications are Copyright (c) 2023, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ *
+ */
+
 /* @test
  * @bug 6442088
  * @summary Change default DNS caching behavior for code not running under
  *          security manager.
  * @run main/othervm/timeout=200 -Djdk.net.hosts.file=DefaultCachingHosts
- *      -Dsun.net.inetaddr.ttl=20  DefaultCaching
+ *      -Dsun.net.inetaddr.ttl=24  DefaultCaching
  */
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -63,7 +70,7 @@ public class DefaultCaching {
         test("foo", "10.5.18.22", true, 5);
 
         // now delay to see if theclub has expired
-        sleep(5);
+        sleep(9);
 
         test("foo", "10.5.18.22", true, 5);
         test("theclub", "129.156.220.1", true, 6);

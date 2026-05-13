@@ -44,6 +44,12 @@
  *
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2022. These
+ * modifications are Copyright (c) 2022, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 /* hsdis.c -- dump a range of addresses as native instructions
    This implements the plugin protocol required by the
    HotSpot PrintAssembly option.
@@ -500,6 +506,9 @@ static const char* native_arch_name() {
 #endif
 #ifdef LIBARCH_riscv64
   res = "riscv:rv64";
+#endif
+#ifdef LIBARCH_loongarch64
+  res = "loongarch64";
 #endif
   if (res == NULL)
     res = "architecture not set in Makefile!";

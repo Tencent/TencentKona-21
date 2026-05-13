@@ -23,11 +23,17 @@
  */
 
 /*
+ * This file has been modified by Loongson Technology in 2023, These
+ * modifications are Copyright (c) 2023, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
+/*
  * @test
  * @library /test/lib /
  * @bug 8281467
  * @requires vm.flagless
- * @requires os.arch=="amd64" | os.arch=="x86_64"
+ * @requires os.arch=="amd64" | os.arch=="x86_64" | os.arch=="loongarch64"
  *
  * @summary Test large CodeEntryAlignments are accepted
  * @run driver compiler.arguments.TestCodeEntryAlignment

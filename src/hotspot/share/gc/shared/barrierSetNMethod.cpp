@@ -22,6 +22,12 @@
  *
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2022. These
+ * modifications are Copyright (c) 2022, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 #include "precompiled.hpp"
 #include "code/codeCache.hpp"
 #include "code/nmethod.hpp"
@@ -158,7 +164,7 @@ void BarrierSetNMethod::arm_all_nmethods() {
   BarrierSetNMethodArmClosure cl(_current_phase);
   Threads::threads_do(&cl);
 
-#if (defined(AARCH64) || defined(RISCV64)) && !defined(ZERO)
+#if (defined(AARCH64) || defined(RISCV64) || defined(LOONGARCH64)) && !defined(ZERO)
   // We clear the patching epoch when disarming nmethods, so that
   // the counter won't overflow.
   BarrierSetAssembler::clear_patching_epoch();

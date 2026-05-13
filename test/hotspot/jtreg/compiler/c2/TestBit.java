@@ -21,6 +21,12 @@
  * questions.
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2023, These
+ * modifications are Copyright (c) 2023, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 package compiler.c2;
 
 import jdk.test.lib.process.OutputAnalyzer;
@@ -33,7 +39,7 @@ import jdk.test.lib.process.ProcessTools;
  * @library /test/lib /
  *
  * @requires vm.flagless
- * @requires os.arch=="aarch64" | os.arch=="amd64" | os.arch == "ppc64" | os.arch == "ppc64le" | os.arch == "riscv64"
+ * @requires os.arch=="aarch64" | os.arch=="amd64" | os.arch == "ppc64" | os.arch == "ppc64le" | os.arch == "riscv64" | os.arch == "loongarch64"
  * @requires vm.debug == true & vm.compiler2.enabled
  *
  * @run driver compiler.c2.TestBit

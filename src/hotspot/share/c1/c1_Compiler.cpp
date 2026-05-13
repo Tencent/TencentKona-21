@@ -22,6 +22,12 @@
  *
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2025, These
+ * modifications are Copyright (c) 2022, 2025, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 #include "precompiled.hpp"
 #include "c1/c1_Compilation.hpp"
 #include "c1/c1_Compiler.hpp"
@@ -219,7 +225,7 @@ bool Compiler::is_intrinsic_supported(const methodHandle& method) {
   case vmIntrinsics::_updateCRC32:
   case vmIntrinsics::_updateBytesCRC32:
   case vmIntrinsics::_updateByteBufferCRC32:
-#if defined(S390) || defined(PPC64) || defined(AARCH64)
+#if defined(S390) || defined(PPC64) || defined(AARCH64) || defined(LOONGARCH64)
   case vmIntrinsics::_updateBytesCRC32C:
   case vmIntrinsics::_updateDirectByteBufferCRC32C:
 #endif

@@ -22,6 +22,12 @@
  *
  */
 
+/*
+ * This file has been modified by Loongson Technology in 2023, These
+ * modifications are Copyright (c) 2022, 2023, Loongson Technology, and are made
+ * available on the same license terms set forth above.
+ */
+
 #include "precompiled.hpp"
 #include "cds/cds_globals.hpp"
 #include "cds/filemap.hpp"
@@ -1903,14 +1909,14 @@ bool Arguments::check_vm_args_consistency() {
   }
 #endif
 
-#if !defined(X86) && !defined(AARCH64) && !defined(RISCV64) && !defined(ARM) && !defined(PPC64) && !defined(S390)
+#if !defined(X86) && !defined(AARCH64) && !defined(RISCV64) && !defined(ARM) && !defined(PPC64) && !defined(S390) && !defined(LOONGARCH64)
   if (LockingMode == LM_LIGHTWEIGHT) {
     FLAG_SET_CMDLINE(LockingMode, LM_LEGACY);
     warning("New lightweight locking not supported on this platform");
   }
 #endif
 
-#if !defined(X86) && !defined(AARCH64) && !defined(PPC64) && !defined(RISCV64) && !defined(S390)
+#if !defined(X86) && !defined(AARCH64) && !defined(PPC64) && !defined(RISCV64) && !defined(S390) && !defined(LOONGARCH64)
   if (LockingMode == LM_MONITOR) {
     jio_fprintf(defaultStream::error_stream(),
                 "LockingMode == 0 (LM_MONITOR) is not fully implemented on this architecture");
