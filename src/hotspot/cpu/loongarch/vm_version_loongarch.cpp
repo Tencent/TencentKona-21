@@ -154,10 +154,6 @@ void VM_Version::get_processor_features() {
 
   _supports_cx8 = true;
 
-  if (UseG1GC && FLAG_IS_DEFAULT(MaxGCPauseMillis)) {
-    FLAG_SET_DEFAULT(MaxGCPauseMillis, 150);
-  }
-
   if (supports_lsx()) {
     if (FLAG_IS_DEFAULT(UseLSX)) {
       FLAG_SET_DEFAULT(UseLSX, true);
@@ -400,6 +396,10 @@ void VM_Version::get_processor_features() {
     }
   }
 
+  if (FLAG_IS_DEFAULT(UseBASE64Intrinsics)) {
+    FLAG_SET_DEFAULT(UseBASE64Intrinsics, true);
+  }
+
   if (UseLSX) {
       if (FLAG_IS_DEFAULT(UseChaCha20Intrinsics)) {
           UseChaCha20Intrinsics = true;
@@ -428,6 +428,11 @@ void VM_Version::get_processor_features() {
       UseFPUForSpilling = false;
     }
   }
+
+  if (FLAG_IS_DEFAULT(UsePoly1305Intrinsics)) {
+    FLAG_SET_DEFAULT(UsePoly1305Intrinsics, true);
+  }
+
 #endif
 
   // This machine allows unaligned memory accesses
