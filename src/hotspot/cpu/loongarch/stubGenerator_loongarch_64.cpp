@@ -4362,6 +4362,278 @@ class StubGenerator: public StubCodeGenerator {
     return start;
   }
 
+  /**
+   *  void j.u.Base64.Encoder.encodeBlock(byte[] src, int sp, int sl, byte[] dst, int dp, boolean isURL)
+   *
+   *  Input arguments:
+   *  c_rarg0   - src, source array
+   *  c_rarg1   - sp, src start offset
+   *  c_rarg2   - sl, src end offset
+   *  c_rarg3   - dst, dest array
+   *  c_rarg4   - dp, dst start offset
+   *  c_rarg5   - isURL, Base64 or URL character set
+   */
+  address generate_base64_encodeBlock() {
+    alignas(64) static const char toBase64[64] = {
+      'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
+      'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+      'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+      'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+      '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'
+    };
+
+    alignas(64) static const char toBase64URL[64] = {
+      'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
+      'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+      'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+      'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+      '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '_'
+    };
+
+    __ align(CodeEntryAlignment);
+    StubCodeMark mark(this, "StubRoutines", "encodeBlock");
+    address start = __ pc();
+    __ enter();
+
+    Register src    = c_rarg0;
+    Register soff   = c_rarg1;
+    Register send   = c_rarg2;
+    Register dst    = c_rarg3;
+    Register doff   = c_rarg4;
+    Register isURL  = c_rarg5;
+
+    Register codec  = c_rarg6;
+    Register length = c_rarg7; // total length of src data in bytes
+
+    Label ProcessData, Exit;
+
+    // length should be multiple of 3
+    __ sub_d(length, send, soff);
+    // real src/dst to process data
+    __ add_d(src, src, soff);
+    __ add_d(dst, dst, doff);
+
+    // load the codec base address
+    __ li(codec, (jlong) toBase64);
+    __ beqz(isURL, ProcessData);
+    __ li(codec, (jlong) toBase64URL);
+    __ BIND(ProcessData);
+
+    // scalar version
+    {
+      Register byte1 = soff, byte0 = send, byte2 = doff;
+      Register combined24Bits = isURL;
+
+      __ beqz(length, Exit);
+
+      Label ScalarLoop;
+      __ BIND(ScalarLoop);
+      {
+        // plain:   [byte0[7:0] : byte1[7:0] : byte2[7:0]] =>
+        // encoded: [byte0[7:2] : byte0[1:0]+byte1[7:4] : byte1[3:0]+byte2[7:6] : byte2[5:0]]
+
+        // load 3 bytes src data
+        __ ld_bu(byte0, Address(src, 0));
+        __ ld_bu(byte1, Address(src, 1));
+        __ ld_bu(byte2, Address(src, 2));
+        __ addi_d(src, src, 3);
+
+        // construct 24 bits from 3 bytes
+        __ slli_w(byte0, byte0, 16);
+        __ slli_w(byte1, byte1, 8);
+        __ orr(combined24Bits, byte0, byte1);
+        __ orr(combined24Bits, combined24Bits, byte2);
+
+        // get codec index and encode(ie. load from codec by index)
+        __ slli_w(byte0, combined24Bits, 8);
+        __ srli_w(byte0, byte0, 26);
+        __ add_d(byte0, codec, byte0);
+        __ ld_bu(byte0, byte0);
+
+        __ slli_w(byte1, combined24Bits, 14);
+        __ srli_w(byte1, byte1, 26);
+        __ add_d(byte1, codec, byte1);
+        __ ld_bu(byte1, byte1);
+
+        __ slli_w(byte2, combined24Bits, 20);
+        __ srli_w(byte2, byte2, 26);
+        __ add_d(byte2, codec, byte2);
+        __ ld_bu(byte2, byte2);
+
+        __ andi(combined24Bits, combined24Bits, 0x3f);
+        __ add_d(combined24Bits, codec, combined24Bits);
+        __ ld_bu(combined24Bits, combined24Bits);
+
+        // store 4 bytes encoded data
+        __ st_b(byte0, Address(dst, 0));
+        __ st_b(byte1, Address(dst, 1));
+        __ st_b(byte2, Address(dst, 2));
+        __ st_b(combined24Bits, Address(dst, 3));
+
+        __ addi_d(length, length, -3);
+        __ addi_d(dst, dst, 4);
+        // loop back
+        __ bnez(length, ScalarLoop);
+      }
+    }
+
+    __ BIND(Exit);
+
+    __ leave();
+    __ jr(RA);
+
+    return (address) start;
+  }
+
+  /**
+   * int j.u.Base64.Decoder.decodeBlock(byte[] src, int sp, int sl, byte[] dst, int dp, boolean isURL, boolean isMIME)
+   *
+   *  Input arguments:
+   *  c_rarg0   - src, source array
+   *  c_rarg1   - sp, src start offset
+   *  c_rarg2   - sl, src end offset
+   *  c_rarg3   - dst, dest array
+   *  c_rarg4   - dp, dst start offset
+   *  c_rarg5   - isURL, Base64 or URL character set
+   *  c_rarg6   - isMIME, Decoding MIME block
+   */
+  address generate_base64_decodeBlock() {
+
+    static const uint8_t fromBase64[256] = {
+        255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u,
+        255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u,
+        255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u,  62u, 255u, 255u, 255u,  63u,
+        52u,  53u,  54u,  55u,  56u,  57u,  58u,  59u,  60u,  61u, 255u, 255u, 255u, 255u, 255u, 255u,
+        255u,   0u,   1u,   2u,   3u,   4u,   5u,   6u,   7u,   8u,   9u,  10u,  11u,  12u,  13u,  14u,
+        15u,  16u,  17u,  18u,  19u,  20u,  21u,  22u,  23u,  24u,  25u, 255u, 255u, 255u, 255u, 255u,
+        255u,  26u,  27u,  28u,  29u,  30u,  31u,  32u,  33u,  34u,  35u,  36u,  37u,  38u,  39u,  40u,
+        41u,  42u,  43u,  44u,  45u,  46u,  47u,  48u,  49u,  50u,  51u, 255u, 255u, 255u, 255u, 255u,
+        255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u,
+        255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u,
+        255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u,
+        255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u,
+        255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u,
+        255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u,
+        255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u,
+        255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u,
+    };
+
+    static const uint8_t fromBase64URL[256] = {
+        255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u,
+        255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u,
+        255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u,  62u, 255u, 255u,
+        52u,  53u,  54u,  55u,  56u,  57u,  58u,  59u,  60u,  61u, 255u, 255u, 255u, 255u, 255u, 255u,
+        255u,   0u,   1u,   2u,   3u,   4u,   5u,   6u,   7u,   8u,   9u,  10u,  11u,  12u,  13u,  14u,
+        15u,  16u,  17u,  18u,  19u,  20u,  21u,  22u,  23u,  24u,  25u, 255u, 255u, 255u, 255u,  63u,
+        255u,  26u,  27u,  28u,  29u,  30u,  31u,  32u,  33u,  34u,  35u,  36u,  37u,  38u,  39u,  40u,
+        41u,  42u,  43u,  44u,  45u,  46u,  47u,  48u,  49u,  50u,  51u, 255u, 255u, 255u, 255u, 255u,
+        255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u,
+        255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u,
+        255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u,
+        255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u,
+        255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u,
+        255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u,
+        255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u,
+        255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u, 255u,
+    };
+
+    __ align(CodeEntryAlignment);
+    StubCodeMark mark(this, "StubRoutines", "decodeBlock");
+    address start = __ pc();
+    __ enter();
+
+    Register src    = c_rarg0;
+    Register soff   = c_rarg1;
+    Register send   = c_rarg2;
+    Register dst    = c_rarg3;
+    Register doff   = c_rarg4;
+    Register isURL  = c_rarg5;
+    Register isMIME = c_rarg6;
+
+    Register codec     = c_rarg7;
+    Register dstBackup = SCR1;
+    Register length    = SCR2;     // total length of src data in bytes
+
+    Label ProcessData, Exit;
+    Label ScalarLoop;
+
+    // passed in length (send - soff) is guaranteed to be > 4,
+    // and in this intrinsic we only process data of length in multiple of 4,
+    // it's not guaranteed to be multiple of 4 by java level, so do it explicitly
+    __ sub_d(length, send, soff);
+    __ bstrins_d(length, R0, 1, 0);
+    // real src/dst to process data
+    __ add_d(src, src, soff);
+    __ add_d(dst, dst, doff);
+    // backup of dst, used to calculate the return value at exit
+    __ move(dstBackup, dst);
+
+    // load the codec base address
+    __ li(codec, (jlong) fromBase64);
+    __ beqz(isURL, ProcessData);
+    __ li(codec, (jlong) fromBase64URL);
+    __ BIND(ProcessData);
+
+    // scalar version
+    {
+      Register byte0 = soff, byte1 = send, byte2 = doff, byte3 = isURL;
+      Register combined32Bits = isMIME;
+
+      // encoded:   [byte0[5:0] : byte1[5:0] : byte2[5:0]] : byte3[5:0]] =>
+      // plain:     [byte0[5:0]+byte1[5:4] : byte1[3:0]+byte2[5:2] : byte2[1:0]+byte3[5:0]]
+      __ BIND(ScalarLoop);
+
+      // load 4 bytes encoded src data
+      __ ld_bu(byte0, Address(src, 0));
+      __ ld_bu(byte1, Address(src, 1));
+      __ ld_bu(byte2, Address(src, 2));
+      __ ld_bu(byte3, Address(src, 3));
+      __ addi_d(src, src, 4);
+
+      // get codec index and decode (ie. load from codec by index)
+      __ add_d(byte0, codec, byte0);
+      __ add_d(byte1, codec, byte1);
+      __ ld_b(byte0, Address(byte0, 0));
+      __ ld_b(byte1, Address(byte1, 0));
+      __ add_d(byte2, codec, byte2);
+      __ add_d(byte3, codec, byte3);
+      __ ld_b(byte2, Address(byte2, 0));
+      __ ld_b(byte3, Address(byte3, 0));
+      __ slli_w(byte0, byte0, 18);
+      __ slli_w(byte1, byte1, 12);
+      __ orr(byte0, byte0, byte1);
+      __ orr(byte0, byte0, byte3);
+      __ slli_w(byte2, byte2, 6);
+      // For performance consideration, `combined32Bits` is constructed for 2 purposes at the same time,
+      //  1. error check below
+      //  2. decode below
+      __ orr(combined32Bits, byte0, byte2);
+
+      // error check
+      __ blt(combined32Bits, R0, Exit);
+
+      // store 3 bytes decoded data
+      __ srai_w(byte0, combined32Bits, 16);
+      __ srai_w(byte1, combined32Bits, 8);
+      __ st_b(byte0, Address(dst, 0));
+      __ st_b(byte1, Address(dst, 1));
+      __ st_b(combined32Bits, Address(dst, 2));
+
+      __ addi_d(length, length, -4);
+      __ addi_d(dst, dst, 3);
+      // loop back
+      __ bnez(length, ScalarLoop);
+    }
+
+    __ BIND(Exit);
+    __ sub_d(c_rarg0, dst, dstBackup);
+
+    __ leave();
+    __ jr(RA);
+
+    return (address) start;
+  }
+
   // ChaCha20 block function.  This version parallelizes by loading
   // individual 32-bit state elements into vectors for four blocks
   //
@@ -4831,6 +5103,216 @@ class StubGenerator: public StubCodeGenerator {
 
     return start;
   }
+
+#ifdef COMPILER2
+
+static const int64_t right_2_bits = right_n_bits(2);
+static const int64_t right_3_bits = right_n_bits(3);
+
+  // In sun.security.util.math.intpoly.IntegerPolynomial1305, integers
+  // are represented as long[5], with BITS_PER_LIMB = 26.
+  // Pack five 26-bit limbs into three 64-bit registers.
+  void poly1305_pack_26(Register dest0, Register dest1, Register dest2, Register src, Register tmp1, Register tmp2) {
+    assert_different_registers(dest0, dest1, dest2, src, tmp1, tmp2);
+
+    // The goal is to have 128-bit value in dest2:dest1:dest0
+    __ ld_d(dest0, Address(src, 0));    // 26 bits in dest0
+
+    __ ld_d(tmp1, Address(src, sizeof(jlong)));
+    __ slli_d(tmp1, tmp1, 26);
+    __ add_d(dest0, dest0, tmp1);       // 52 bits in dest0
+
+    __ ld_d(tmp2, Address(src, 2 * sizeof(jlong)));
+    __ slli_d(tmp1, tmp2, 52);
+    __ add_d(dest0, dest0, tmp1);       // dest0 is full
+
+    __ srli_d(dest1, tmp2, 12);         // 14-bit in dest1
+
+    __ ld_d(tmp1, Address(src, 3 * sizeof(jlong)));
+    __ slli_d(tmp1, tmp1, 14);
+    __ add_d(dest1, dest1, tmp1);       // 40-bit in dest1
+
+    __ ld_d(tmp1, Address(src, 4 * sizeof(jlong)));
+    __ slli_d(tmp2, tmp1, 40);
+    __ add_d(dest1, dest1, tmp2);       // dest1 is full
+
+    if (dest2->is_valid()) {
+      __ srli_d(tmp1, tmp1, 24);
+      __ move(dest2, tmp1);               // 2 bits in dest2
+    } else {
+#ifdef ASSERT
+      Label OK;
+      __ srli_d(tmp1, tmp1, 24);
+      __ beq(R0, tmp1, OK);           // 2 bits
+      __ stop("high bits of Poly1305 integer should be zero");
+      __ should_not_reach_here();
+      __ bind(OK);
+#endif
+    }
+  }
+
+  // As above, but return only a 128-bit integer, packed into two
+  // 64-bit registers.
+  void poly1305_pack_26(Register dest0, Register dest1, Register src, Register tmp1, Register tmp2) {
+    poly1305_pack_26(dest0, dest1, noreg, src, tmp1, tmp2);
+  }
+
+  // U_2:U_1:U_0: += (U_2 >> 2) * 5
+  void poly1305_reduce(Register U_2, Register U_1, Register U_0, Register tmp1, Register tmp2) {
+    assert_different_registers(U_2, U_1, U_0, tmp1, tmp2);
+
+    // First, U_2:U_1:U_0 += (U_2 >> 2)
+    __ srli_d(tmp1, U_2, 2);
+    __ cad(U_0, U_0, tmp1, tmp2); // Add tmp1 to U_0 with carry output to tmp2
+    __ andi(U_2, U_2, right_2_bits); // Clear U_2 except for the lowest two bits
+    __ cad(U_1, U_1, tmp2, tmp2); // Add carry to U_1 with carry output to tmp2
+    __ add_d(U_2, U_2, tmp2);
+
+    // Second, U_2:U_1:U_0 += (U_2 >> 2) << 2
+    __ slli_d(tmp1, tmp1, 2);
+    __ cad(U_0, U_0, tmp1, tmp2); // Add tmp1 to U_0 with carry output to tmp2
+    __ cad(U_1, U_1, tmp2, tmp2); // Add carry to U_1 with carry output to tmp2
+    __ add_d(U_2, U_2, tmp2);
+  }
+
+  // Poly1305, RFC 7539
+  // void com.sun.crypto.provider.Poly1305.processMultipleBlocks(byte[] input, int offset, int length, long[] aLimbs, long[] rLimbs)
+
+  // Arguments:
+  //    c_rarg0:   input_start -- where the input is stored
+  //    c_rarg1:   length
+  //    c_rarg2:   acc_start -- where the output will be stored
+  //    c_rarg3:   r_start -- where the randomly generated 128-bit key is stored
+
+  // See https://loup-vaillant.fr/tutorials/poly1305-design for a
+  // description of the tricks used to simplify and accelerate this
+  // computation.
+
+  address generate_poly1305_processBlocks() {
+    __ align(CodeEntryAlignment);
+    StubCodeMark mark(this, "StubRoutines", "poly1305_processBlocks");
+    address start = __ pc();
+    __ enter();
+    Label here;
+
+    RegSet saved_regs = RegSet::of(S0);
+    RegSetIterator<Register> regs = (RegSet::range(A4, T8) - RegSet::of(SCR1, SCR2) + RegSet::of(S0)).begin();
+    __ push(saved_regs);
+
+    // Arguments
+    const Register input_start = c_rarg0, length = c_rarg1, acc_start = c_rarg2, r_start = c_rarg3;
+
+    // R_n is the 128-bit randomly-generated key, packed into two
+    // registers. The caller passes this key to us as long[5], with
+    // BITS_PER_LIMB = 26.
+    const Register R_0 = *regs, R_1 = *++regs;
+    poly1305_pack_26(R_0, R_1, r_start, SCR1, SCR2);
+
+    // RR_n is (R_n >> 2) * 5
+    const Register RR_0 = *++regs, RR_1 = *++regs;
+    __ srli_d(SCR1, R_0, 2);
+    __ alsl_d(RR_0, SCR1, SCR1, 1);
+    __ srli_d(SCR1, R_1, 2);
+    __ alsl_d(RR_1, SCR1, SCR1, 1);
+
+    // U_n is the current checksum
+    const Register U_0 = *++regs, U_1 = *++regs, U_2 = *++regs;
+    poly1305_pack_26(U_0, U_1, U_2, acc_start, SCR1, SCR2);
+
+    static constexpr int BLOCK_LENGTH = 16;
+    Label DONE, LOOP;
+
+    __ li(SCR1, BLOCK_LENGTH);
+    __ blt(length, SCR1, DONE);
+
+    {
+      __ bind(LOOP);
+
+      // S_n is to be the sum of U_n and the next block of data
+      const Register S_0 = *++regs, S_1 = *++regs, S_2 = *++regs;
+      __ ld_d(S_0, Address(input_start, 0));
+      __ ld_d(S_1, Address(input_start, wordSize));
+
+      __ cad(S_0, S_0, U_0, SCR1); // Add U_0 to S_0 with carry output to SCR1
+      __ cadc(S_1, S_1, U_1, SCR1); // Add U_1 with carry to S_1 with carry output to SCR1
+      __ add_d(S_2, U_2, SCR1);
+
+      __ addi_d(S_2, S_2, 1);
+
+      const Register U_0HI = *++regs, U_1HI = *++regs;
+
+      // NB: this logic depends on some of the special properties of
+      // Poly1305 keys. In particular, because we know that the top
+      // four bits of R_0 and R_1 are zero, we can add together
+      // partial products without any risk of needing to propagate a
+      // carry out.
+      __ wide_mul(U_0, U_0HI, S_0, R_0);
+      __ wide_madd(U_0, U_0HI, S_1, RR_1, SCR1, SCR2);
+      __ wide_madd(U_0, U_0HI, S_2, RR_0, SCR1, SCR2);
+
+      __ wide_mul(U_1, U_1HI, S_0, R_1);
+      __ wide_madd(U_1, U_1HI, S_1, R_0, SCR1, SCR2);
+      __ wide_madd(U_1, U_1HI, S_2, RR_1, SCR1, SCR2);
+
+      __ andi(U_2, R_0, right_2_bits);
+      __ mul_d(U_2, S_2, U_2);
+
+      // Partial reduction mod 2**130 - 5
+      __ cad(U_1, U_1, U_0HI, SCR1); // Add U_0HI to U_1 with carry output to SCR1
+      __ adc(U_2, U_2, U_1HI, SCR1);
+      // Sum is now in U_2:U_1:U_0.
+
+      // U_2:U_1:U_0: += (U_2 >> 2) * 5
+      poly1305_reduce(U_2, U_1, U_0, SCR1, SCR2);
+
+      __ addi_d(length, length, -BLOCK_LENGTH);
+      __ addi_d(input_start, input_start, BLOCK_LENGTH);
+      __ li(SCR1, BLOCK_LENGTH);
+      __ bge(length, SCR1, LOOP);
+    }
+
+    // Further reduce modulo 2^130 - 5
+    poly1305_reduce(U_2, U_1, U_0, SCR1, SCR2);
+
+    // Unpack the sum into five 26-bit limbs and write to memory.
+    // First 26 bits is the first limb
+    __ slli_d(SCR1, U_0, 38); // Take lowest 26 bits
+    __ srli_d(SCR1, SCR1, 38);
+    __ st_d(SCR1, Address(acc_start)); // First 26-bit limb
+
+    // 27-52 bits of U_0 is the second limb
+    __ slli_d(SCR1, U_0, 12); // Take next 27-52 bits
+    __ srli_d(SCR1, SCR1, 38);
+    __ st_d(SCR1, Address(acc_start, sizeof (jlong))); // Second 26-bit limb
+
+    // Getting 53-64 bits of U_0 and 1-14 bits of U_1 in one register
+    __ srli_d(SCR1, U_0, 52);
+    __ slli_d(SCR2, U_1, 50);
+    __ srli_d(SCR2, SCR2, 38);
+    __ add_d(SCR1, SCR1, SCR2);
+    __ st_d(SCR1, Address(acc_start, 2 * sizeof (jlong))); // Third 26-bit limb
+
+    // Storing 15-40 bits of U_1
+    __ slli_d(SCR1, U_1, 24); // Already used up 14 bits
+    __ srli_d(SCR1, SCR1, 38); // Clear all other bits from SCR1
+    __ st_d(SCR1, Address(acc_start, 3 * sizeof (jlong))); // Fourth 26-bit limb
+
+    // Storing 41-64 bits of U_1 and first three bits from U_2 in one register
+    __ srli_d(SCR1, U_1, 40);
+    __ andi(SCR2, U_2, right_3_bits);
+    __ slli_d(SCR2, SCR2, 24);
+    __ add_d(SCR1, SCR1, SCR2);
+    __ st_d(SCR1, Address(acc_start, 4 * sizeof (jlong))); // Fifth 26-bit limb
+
+    __ bind(DONE);
+    __ pop(saved_regs);
+    __ leave(); // Required for proper stackwalking
+    __ jr(RA);
+
+    return start;
+  }
+
+#endif // COMPILER2
 
 #if INCLUDE_JFR
 
@@ -5690,6 +6172,10 @@ class StubGenerator: public StubCodeGenerator {
       StubRoutines::_montgomerySquare = g.generate_multiply();
     }
 
+    if (UsePoly1305Intrinsics) {
+      StubRoutines::_poly1305_processBlocks = generate_poly1305_processBlocks();
+    }
+
     if (UseBigIntegerShiftIntrinsic) {
       StubRoutines::_bigIntegerLeftShiftWorker = generate_bigIntegerLeftShift();
       StubRoutines::_bigIntegerRightShiftWorker = generate_bigIntegerRightShift();
@@ -5715,6 +6201,11 @@ class StubGenerator: public StubCodeGenerator {
 
     if (UseSHA256Intrinsics) {
       generate_sha256_implCompress("sha256_implCompress", StubRoutines::_sha256_implCompress, StubRoutines::_sha256_implCompressMB);
+    }
+
+    if (UseBASE64Intrinsics) {
+      StubRoutines::_base64_encodeBlock = generate_base64_encodeBlock();
+      StubRoutines::_base64_decodeBlock = generate_base64_decodeBlock();
     }
 
     if (UseChaCha20Intrinsics) {
